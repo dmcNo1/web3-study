@@ -6,7 +6,7 @@ import "fmt"
 // 切片底层就是一个数组，切片中有一个指针指向这个数组，len表示切片的元素个数，cap表示底层数组的长度，原理类似Java的ArrayList
 // 切片的本质，就是一个指向数组的指针
 func main() {
-	// testCreateSlice1()
+	testCreateSlice1()
 	// testCreateSlice2()
 	// testCreateSlice3()
 	// testAppendSlice()
@@ -16,13 +16,14 @@ func main() {
 
 func testCreateSlice1() {
 	arr := [5]int{1, 2, 3, 4, 5}
-	// 从初始位置复制，到arr[1]的位置结束，底层数组就是arr[0]~arr结束的位置
+	// 从初始位置复制，到arr[1]的位置结束，底层数组就是arr[0]~arr结束的位置；输出%p-slice，等于输出slice底层的数组的地址。
 	slice := arr[:2]
-	fmt.Println("length slice  = ", len(slice))     // 2
-	fmt.Println("capacity slice  = ", cap(slice))   // 5
-	fmt.Printf("address of arr[0] = %p\n", &arr[0]) // 0xc00000e390
-	fmt.Printf("address of arr = %p\n", &arr)       // 0xc00000e390
-	fmt.Printf("address of slice = %p\n", slice)    // 0xc00000e390
+	fmt.Println("length slice  = ", len(slice))          // 2
+	fmt.Println("capacity slice  = ", cap(slice))        // 5
+	fmt.Printf("address of arr[0] = %p\n", &arr[0])      // 0xc00000e360
+	fmt.Printf("address of arr = %p\n", &arr)            // 0xc00000e360
+	fmt.Printf("address of slice's array = %p\n", slice) // 0xc00000e360
+	fmt.Printf("address of slice = %p\n", &slice)        // 0xc000008030
 
 	// 从arr[1]复制，到arr[3]的位置结束，底层数组就是arr[1]~arr结束的位置
 	slice = arr[1:4]
