@@ -66,3 +66,8 @@ func (u *UserController) UploadFiles(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{"message": "success!"})
 }
+
+// 重定向
+func (u *UserController) Redirect(ctx *gin.Context) {
+	ctx.Redirect(http.StatusMovedPermanently, "http://www.baidu.com")
+}

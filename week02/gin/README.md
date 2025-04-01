@@ -178,6 +178,30 @@ func (a *AuthController) LoginUri(ctx *gin.Context) {
 }
 ```
 
+## 重定向
+
+```go
+// 重定向
+func (u *UserController) Redirect(ctx *gin.Context) {
+	ctx.Redirect(http.StatusMovedPermanently, "http://www.baidu.com")
+}
+```
+
+## 同步异步
+
+* goroutine机制可以方便地实现异步处理
+* 另外，在启动新的goroutine时，不应该使用原始上下文，必须使用它的只读副本
+
+```go
+func GetMsgMiddleware(ctx *gin.Context) {
+	// 获取其他中间件存入的数据
+	if msg, existsFlag := ctx.Get("msgFromLog"); existsFlag {
+		fmt.Printf("msgFromLog = %v\n", msg)
+	}
+	ctx.Next()
+}
+```
+
 ## 中间件
 
 gin的中间件，必须是`gin.HandlerFunc`类型，这是这个类型的定义`type HandlerFunc func(*Context)`。配置路由的时候可以传递多个func回调函数，最后一个func回调函数前面触发的方法都可以称为中间件。可以这样配置中间件：
@@ -352,11 +376,11 @@ func (u UserController) GetSession(ctx *gin.Context) {
 
 工作中常用的还有基于`redis`存储，只需要将存储引擎按照redis来配置即可，具体参考文档或者官网。
 
-
+gorilla的session实现：https://www.topgoer.cn/docs/ginkuangjia/ginSessions
 
 ## 模板渲染、静态文件
 
-直接看笔记吧，没学
+https://www.topgoer.cn/docs/ginkuangjia/ginhtmlxuanran
 
 # GORM
 

@@ -17,5 +17,6 @@ func initUserRouters(router *gin.Engine) {
 		userRouters.POST("/form", userController.Form)
 		userRouters.POST("/upload", userController.Upload)
 		userRouters.POST("/uploadFiles", userController.UploadFiles)
+		userRouters.GET("/redirect", userController.Redirect)
 	}
 }
