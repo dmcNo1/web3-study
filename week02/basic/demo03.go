@@ -4,6 +4,10 @@ import "fmt"
 
 // 闭包
 func main() {
+	testClosure01()
+}
+
+func testClosure01() {
 	// 由于testFunc存在，所以num即使在函数调用完还是存在的
 	testFunc := createUpdater()
 	fmt.Println(testFunc())
