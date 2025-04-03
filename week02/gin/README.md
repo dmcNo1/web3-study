@@ -6,6 +6,19 @@ https://github.com/gin-gonic/gin
 
 https://gin-gonic.com/zh-cn/docs/examples/upload-file/single-file/
 
+```sh
+# 初始化项目
+go mod init mode_name
+
+# 导入
+go get github.com/gin-gonic/gin
+go get github.com/pilu/fresh
+go get github.com/gin-contrib/sessions
+
+# 热部署方式启动
+go run github.com/pilu/fresh
+```
+
 ## 环境搭建
 
 在VisualCode中，在工作区完成了`go mod init mode_name`之后，通过**`go get github.com/gin-gonic/gin`**即可，如果是在cmd窗口，则需要使用`go install`。这样就可以使用gin框架了，可以配合`net/http`包使用已经封装好了的常用的httpStatus。
@@ -381,179 +394,6 @@ gorilla的session实现：https://www.topgoer.cn/docs/ginkuangjia/ginSessions
 ## 模板渲染、静态文件
 
 https://www.topgoer.cn/docs/ginkuangjia/ginhtmlxuanran
-
-# GORM
-
-参考的笔记文档东西比较啰嗦，这里也没有写的很细，尤其是多表查询这块，没有怎么写，还有事务控制这块也没有看过，最好自己看官方的文档。https://gorm.io/docs/
-
-GORM是GoLang中提供的一个ORM框架，类似于Java的JDBC+MyBatis。GORM官方支持的数据库类型有：MySQL、PostgreSQL、SQlite、SQL Server，这里通过MySql来演示。
-
-## 安装GORM
-
-```sh
-go get -u gorm.io/gorm
-go get -u gorm.io/driver/mysql
-```
-
-## 建立连接
-
-创建`models/core.go`
-
-```go
-package models
-
-import (
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-)
-
-// 为了方便全局使用，声明成全局变量
-var DB *gorm.DB
-var Err error
-
-func Init() {
-    // 连接信息
-	dsn := "root:mysql@tcp(127.0.0.1:3306)/gin?charset=utf8mb4&parseTime=True&loc=Local"
-    // 开启数据库连接
-	DB, Err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
-}
-```
-
-## 定义操作数据库的模型
-
-也就是创建Java中的entity/bean实体类，GoLang中通过定义对应的结构体来实现；对应的结构体需要实现`TableName`方法，来获取对应的库表名称，如果不实现这个方法，默认是对应的结构体的复数形式，这里也就是`users`表，建议自己实现比较好。
-
-```go
-// 对应的实体
-type User struct {
-	Id       int
-	Username string
-	Age      int
-	Email    string
-	AddTime  int	// 对应字段add_time
-}
-
-// 获取表明的方法，一定要这样命名
-func (u User) TableName() string {
-	return "user"
-}
-```
-
-## CRUD
-
-### 查找
-
-```go
-// 将查找结果赋值到userList中
-func (u UserController) Find(ctx *gin.Context) {
-    userList := []models.User{}
-    // 如果没有where条件，可以忽略Where()这个方法
-    models.DB.Where(whereSql).Find(&userList)
-}
-```
-
-### 插入
-
-```go
-func (u UserController) Add(ctx *gin.Context) {
-	user := &models.User{}
-	if err := ctx.ShouldBind(user); err == nil {
-		// insert
-		models.DB.Create(user)
-	}
-}
-```
-
-### 修改
-
-```go
-func (u UserController) Patch(ctx *gin.Context) {
-	// 根据patch传来的参数，生成对应的entity，用于查询
-	user := &models.User{}
-	if id := ctx.Query("id"); id != "" {
-		user.Id, _ = strconv.Atoi(id)
-	}
-
-	models.DB.Find(&user)
-	if user != nil {
-		if err := ctx.ShouldBind(user); err == nil {
-			// update
-			// 这样会把所有的字段都更新：models.DB.Save(user)，这样即使是0或者nil也会更新，这样用的最多
-			// 更新单列：models.DB.Model(&user).Where("id = ?", user.Id).Update("email", user.Email)
-			// 更新多列
-			models.DB.Save(user)
-		}
-	}
-
-}
-```
-
-### 删除
-
-```go
-func (u UserController) Delete(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		u.Error(ctx)
-		return
-	}
-
-	// delete，最常用的写法
-    // 也可以这样：models.DB.Where("username = ?", user.Username).Delete(user)
-	user := &models.User{Id: id}
-	models.DB.Delete(user)
-	
-}
-```
-
-### 关联查询
-
-这里比较麻烦，可以多看看官方文档。
-
-首先，模型需要指定对应的业务外键：
-
-```go
-// 对应的实体
-type User struct {
-	Id       int
-	Username string
-	Age      int
-	Email    string
-	AddTime  int
-	// 假如user表和role表是一对一关联，那么role默认会以role_id作为业务外键，也可以自定义对应的外键
-	RoleId int
-	Role   Role `gorm:"foreignKey:RoleId"`
-}
-
-// 获取表明的方法，一定要这样命名
-func (u User) TableName() string {
-	return "user"
-}
-```
-
-然后对应的查询逻辑可以这样处理：
-
-```go
-// select * from user u join role r on u.role_id = r.id
-func (u UserController) GetUserRole(ctx *gin.Context) {
-	userList := []models.User{}
-	// 通过Preload制定需要关联查询的对象，这里会关联查询Role对象对应的结构体所对应的表
-	models.DB.Preload("Role").Find(&userList)
-	ctx.JSON(http.StatusOK, gin.H{
-		"result": userList,
-	})
-}
-```
-
-### 使用原生的SQL
-
-也就是自己手写SQL
-
-```go
-// 通过原生SQL更新数据
-db.Exec("update nav set url = ? where id = ?", "xxx.xxx.com", 1)
-```
 
 # 微服务
 
