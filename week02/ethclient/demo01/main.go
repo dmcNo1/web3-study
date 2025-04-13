@@ -9,6 +9,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -16,17 +17,21 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"golang.org/x/crypto/sha3"
+
+	erc20 "demo01/sols/erc20"
 )
 
 func main() {
-	// getMsg()
+	getMsg()
 	// getAccount()
+	// getToken()
 	// createPrivateKey()
 	// transfer()
-	transferToken()
+	// transferToken()
 	// subscribe()
 }
 
+// 获取信息
 func getMsg() {
 	// 开启一个连接
 	client, err := ethclient.Dial("https://eth-mainnet.g.alchemy.com/v2/Ng0L0W_L8-FPX4BWHR5FDvgzyAaRnubA")
@@ -41,6 +46,7 @@ func getMsg() {
 		log.Fatal(err)
 	}
 
+	// 打印区块头中的一些重要信息
 	fmt.Println(header.Number.Uint64())     // 22195096
 	fmt.Println(header.Time)                // 1743764159
 	fmt.Println(header.Difficulty.Uint64()) // 0
@@ -134,10 +140,7 @@ func getMsg() {
 	}
 }
 
-func getToken() {
-
-}
-
+// 查看账户信息
 func getAccount() {
 	client, err := ethclient.Dial("https://eth-sepolia.g.alchemy.com/v2/Ng0L0W_L8-FPX4BWHR5FDvgzyAaRnubA")
 	if err != nil {
@@ -145,8 +148,8 @@ func getAccount() {
 	}
 
 	// 获取账户的最新余额
-	account := common.HexToAddress("0x572573b8abE8328e1891c4DF79ECD887e6f42A15")
-	balance, err := client.BalanceAt(context.Background(), account, nil)
+	accountAddress := common.HexToAddress("0x572573b8abE8328e1891c4DF79ECD887e6f42A15")
+	balance, err := client.BalanceAt(context.Background(), accountAddress, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -167,11 +170,53 @@ func getAccount() {
 	fmt.Println(ethValue)
 
 	// 查看待处理的余额
-	pendingBalance, err := client.PendingBalanceAt(context.Background(), account)
+	pendingBalance, err := client.PendingBalanceAt(context.Background(), accountAddress)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(pendingBalance)
+}
+
+func getToken() {
+	client, err := ethclient.Dial("https://eth-sepolia.g.alchemy.com/v2/Ng0L0W_L8-FPX4BWHR5FDvgzyAaRnubA")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 这里先用Dave的示例代币来；实例化一个token
+	tokenAddress := common.HexToAddress("0xfadea654ea83c00e5003d2ea15c59830b65471c0")
+	erc20Instance, err := erc20.NewErc20(tokenAddress, client)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 查询账户信息
+	accountAddress := common.HexToAddress("0x572573b8abE8328e1891c4DF79ECD887e6f42A15")
+	accountBalance, err := erc20Instance.BalanceOf(&bind.CallOpts{}, accountAddress)
+	if err != nil {
+		log.Fatal(err)
+	}
+	name, err := erc20Instance.Name(&bind.CallOpts{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	symbol, err := erc20Instance.Symbol(&bind.CallOpts{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	decimals, err := erc20Instance.Decimals(&bind.CallOpts{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("name: %s\n", name)          // RCCDemoToken
+	fmt.Printf("symbol: %s\n", symbol)      // RDT
+	fmt.Printf("decimals: %v\n", decimals)  // 18
+	fmt.Printf("wei: %s\n", accountBalance) // 0
+	fbal := new(big.Float)
+	fbal.SetString(accountBalance.String())
+	value := new(big.Float).Quo(fbal, big.NewFloat(math.Pow10(int(decimals))))
+	fmt.Printf("balance: %f", value) // 0.000000
 }
 
 // 创建钱包（也就是生成私钥）
