@@ -331,7 +331,7 @@ abstract contract InsertionSort{
 
 接口提供了两个重要的信息：
 
-1. 合约里每个函数的bytes4选择器，以及函数签名函数名（每个参数类型）。
+1. 合约里每个函数的bytes4选择器，以及函数签名函数名（每个参数类型）。**注意，在函数签名中，uint和int要写为uint256和int256。**
 2. 接口id（更多信息见EIP165）
 
 另外，接口与合约ABI（Application Binary Interface）等价，可以相互转换：编译接口可以得到合约的ABI，利用abi-to-sol工具，也可以将`ABI json`文件转换为接口`sol`文件。
@@ -639,3 +639,165 @@ function setXTransferETH(address _address, uint256 x) payable external {
 
 1. 代理合约（`Proxy Contract`）：将智能合约的存储合约和逻辑合约分开。`Proxy Contract`存储所有相关的变量，并且保存逻辑合约的地址；所有函数存储在逻辑合约（`Logic Contract`）中，通过`delegatecall`调用。当升级时，只需要将代理合约的地址指向新的逻辑合约地址。
 2. EIP-2535 Diamonds（钻石）：钻石是一个支持构建可在生产中扩展的模块化智能合约系统的标准。钻石是具有多个实施合约的代理合约。
+
+# 创建合约
+
+在链上，用户可以创建合约，合约也可以创建合约。去中心化交易所`uniswap`就是利用合约工厂`PairFactory`创建了无数个币对合约`Pair`。
+
+## create
+
+`create`用法如下：如果构造函数是`payable`修饰的，还可以指定构造合约的`value`
+
+```solidity
+Contract x = new Contract{value: _value}(params)
+```
+
+## create2
+
+`CREATE2`操作码使我们在智能合约部署在以太坊网络之前就能预测合约的地址。Uniswap创建Pair合约用的就是`CREATE2`而不是`CREATE`。
+
+智能合约可以由其他合约和普通账户利用`CREATE`操作码创建。 在这两种情况下，新合约的地址都以相同的方式计算：创建者的地址(通常为部署的钱包地址或者合约地址)和`nonce`(该地址发送交易的总数,对于合约账户是创建的合约总数,每创建一个合约`nonce+1`)的哈希。**新地址 = hash(创建者地址, nonce)**。创建者地址不会变，但`nonce`可能会随时间而改变，因此用`CREATE`创建的合约地址不好预测。
+
+### create2是如何计算合约地址的
+
+`CREATE2`的目的是为了让合约地址独立于未来的事件。不管未来区块链上发生了什么，你都可以把合约部署在事先计算好的地址上。用`CREATE2`创建的合约地址由4个部分决定：
+
+1. `0xFF`：一个常数，避免和`CREATE`冲突
+2. `CreatorAddress`: 调用`CREATE2`的当前合约（创建合约）地址。
+3. `salt`（盐）：一个创建者指定的`bytes32`类型的值，它的主要目的是用来影响新创建的合约的地址。
+4. `initcode`: 新合约的初始字节码（合约的Creation Code和构造函数的参数）。
+
+**新地址 = hash("0xFF",创建者地址, salt, initcode)**。`CREATE2`确保，如果创建者使用`CREATE2`和提供的`salt`部署给定的合约`initcode`，它将存储在**新地址**中。
+
+用法：`Contract x = new Contract{salt: _salt, value: _value}(params)`。
+
+### create2的实际应用场景
+
+1. 交易所为新用户预留创建钱包合约地址。
+2. 由`CREATE2`驱动的`factory`合约，在Uniswap V2中交易对的创建是在`Factory`中调用`CREATE2`完成。这样做的好处是: 它可以得到一个确定的pair地址, 使得 Router中就可以通过`(tokenA, tokenB)`计算出pair地址, 不再需要执行一次`Factory.getPair(tokenA, tokenB)`的跨合约调用。
+
+# 删除合约
+
+`selfdestruct`命令可以用来删除合约，并将合约的余额转移到指定地址。用法：`selfdestruct(address)`，其中`address`为要转移的余额的地址。`address`地址不需要有`receive()`或`fallback()`也能接收ETH。
+
+当我们触发`selfdestruct`操作时，在坎昆升级前，合约会被自毁。但是在升级后，合约依然存在，只是将合约包含的ETH转移到指定地址，而合约依然能够调用。根据提案，原先的删除功能只有在合约创建-自毁这两个操作处在同一笔交易时才能生效。
+
+# ABI编码解码
+
+[具体内容在这里，参考下这个](https://www.wtf.academy/zh/course/solidity102/ABIEncode)
+
+ABI (Application Binary Interface，应用二进制接口)是与以太坊智能合约交互的标准。数据基于他们的类型编码；并且由于编码后不包含类型信息，解码时需要注明它们的类型。
+
+Solidity中，ABI编码有4个函数：`abi.encode`、`abi.encodePacked`、`abi.encodeWithSignature`、`abi.encodeWithSelector`。而ABI解码有1个函数：`abi.decode`，用于解码`abi.encode`的数据。
+
+## abi.encode
+
+ABI被设计出来跟智能合约交互，他将每个参数填充为32字节的数据，并拼接在一起。如果你要和合约交互，你要用的就是`abi.encode`。
+
+## abi.encodePacked
+
+将给定参数根据其所需最低空间编码。它类似`abi.encode`，但是会把其中填充的很多0省略。比如，只用1字节来编码uint8类型。当你想省空间，并且不与合约交互的时候，可以使用`abi.encodePacked`，例如算一些数据的hash时。需要注意，`abi.encodePacked`因为不会做填充，所以不同的输入在拼接后可能会产生相同的编码结果，导致冲突，这也带来了潜在的安全风险。
+
+## abi.encodeWithSignature
+
+与`abi.encode`功能类似，只不过第一个参数为函数签名，比如`"foo(uint256,address,string,uint256[2])"`。当调用其他合约的时候可以使用。
+
+## abi.encodeWithSelector
+
+与`abi.encodeWithSignature`功能类似，只不过第一个参数为函数选择器，为`函数签名`Keccak哈希的前4个字节。
+
+## abi.decode
+
+`abi.decode`用于解码`abi.encode`生成的二进制编码，将它还原成原本的参数。
+
+# Keccak256
+
+用法很简单：`哈希 = keccak256(数据)`
+
+```solidity
+function hash(
+    uint _num,
+    string memory _string,
+    address _addr
+    ) public pure returns (bytes32) {
+    return keccak256(abi.encodePacked(_num, _string, _addr));
+}
+```
+
+# 选择器
+
+选择器是函数签名的哈希的前4个字节，用于调用函数。当我们调用智能合约时，本质上是向目标合约发送了一段`calldata`，在remix中发送一次交易后，可以在详细信息中看见input即为此次交易的`calldata`，发送的`calldata`中前4个字节是`selector`（函数选择器）。
+
+![selector](images/selector.png)
+
+可以将`input`分成两个部分，前4个字节字节是`selector`，指向调用的函数的地址，后面的部分就是传递的参数。
+
+由于计算`method id`时，需要通过函数名和函数的参数类型来计算。在Solidity中，函数的参数类型主要分为：基础类型参数，固定长度类型参数，可变长度类型参数和映射类型参数。
+
+## 基础类型参数
+
+`bytes4(keccak256("elementaryParamSelector(uint256,bool)"))`
+
+## 固定长度类型参数
+
+`bytes4(keccak256("fixedSizeParamSelector(uint256[3])"))`
+
+## 可变长度类型参数
+
+`bytes4(keccak256("nonFixedSizeParamSelector(uint256[],string)"))`
+
+## 映射类型参数
+
+映射类型参数通常有：contract、enum、struct等。在计算method id时，需要将该类型转化成为ABI类型。
+
+假设有一个结构体User
+
+```solidity
+struct User {
+    uint256 id;
+    string name;
+}
+```
+
+那么需要将参数转为tuple类型，即`(uint256,string)`：`bytes4(keccak256("mappingParamSelector(address,(uint256,bytes),uint256[],uint8)"))`
+
+## 使用selector
+
+可以利用`selector`来调用目标函数。只需要知道函数的`method id`即可：`(bool success1, bytes memory data1) = address(this).call(abi.encodeWithSelector(0x3ec37834, 1, 0))`
+
+# try-catch
+
+用法：
+
+```solidity
+try externalContract.f() {
+    // call成功的情况下 运行一些代码
+} catch {
+    // call失败的情况下 运行一些代码
+}
+```
+
+如果调用的函数有返回值：
+
+```solidity
+try externalContract.f() returns(returnType val){
+    // call成功的情况下 运行一些代码
+} catch {
+    // call失败的情况下 运行一些代码
+}
+```
+
+另外，`catch`模块支持捕获特殊的异常原因：
+
+```solidity
+try externalContract.f() returns(returnType){
+    // call成功的情况下 运行一些代码
+} catch Error(string memory /*reason*/) {
+    // 捕获revert("reasonString") 和 require(false, "reasonString")
+} catch Panic(uint /*errorCode*/) {
+    // 捕获Panic导致的错误 例如assert失败 溢出 除零 数组访问越界
+} catch (bytes memory /*lowLevelData*/) {
+    // 如果发生了revert且上面2个异常类型匹配都失败了 会进入该分支
+    // 例如revert() require(false) revert自定义类型的error
+}
+```
