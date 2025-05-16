@@ -84,6 +84,7 @@ contract PairFactory2 {
             salt,
             // 如果构造函数需要传参，这里计算的时候也要带上
             // keccak256(abi.encodePacked(type(Pair2).creationCode, abi.encode(address(this))))
+            // 在Solidity中，type关键字主要用于获取与特定类型相关的元数据或接口信息。
             keccak256(type(Pair2).creationCode)
             )))));
         return predictedAddress;
