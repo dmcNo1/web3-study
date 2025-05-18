@@ -7,11 +7,11 @@ import (
 )
 
 func main() {
-	// testCmd()
+	testCmd()
 	// testPointer()
 	// testSwitch()
 	// testGoto()
-	testArray()
+	// testArray()
 }
 
 func testCmd() {
