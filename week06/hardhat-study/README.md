@@ -1,3 +1,6 @@
+一个还行的中文文档：https://learnblockchain.cn/docs/hardhat/getting-started/
+一个还行的入门视频：https://www.bilibili.com/video/BV1RFsfe5Ek5
+
 # 安装hardhat
 
 1. 用`npm`工具初始化项目：`npm init`，默认会以当前文件夹名来作为项目名。完成之后，会生成一个`package.json`文件
@@ -24,7 +27,7 @@
 
 >  `await fundMeFactory.deploy(10)`
 
-这里需要配置API_KEY，见`hardhat.config.js`文件。如果验证一直报错，可以在机场里打开tun模式。
+这里需要配置API_KEY，见`hardhat.config.js`文件。如果验证一直报错，可以在机场里打开tun模式。网络问题，要使用局域网代理，搜一下github有一个解决文章。
 
 也可以在`deployFundMe.js`文件中，配置验证的代码。
 
@@ -38,4 +41,12 @@ hardhat提供了一些测试框架，比如`mocha`和`chai`。只需要在test�
 
 # hardhat-deploy
 
-`npm install --save-dev hardhat-deploy`。
+`npm install --save-dev hardhat-deploy`。然后在deploy文件夹下写对应的js文件，在`hardhat.config.js`引入，然后执行`npx hardhat deploy`即可。
+
+# hardhat-ethers
+
+`npm install --save-dev  @nomiclabs/hardhat-ethers hardhat-deploy-ethers ethers`
+
+# hardhat-gas-reporter
+
+`npm install --save-dev hardhat-gas-reporter`，用于监测合约的gas使用情况。

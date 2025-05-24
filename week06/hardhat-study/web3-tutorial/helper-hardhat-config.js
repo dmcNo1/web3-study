@@ -1,6 +1,8 @@
 const DECIMAL = 8;
 const INITIAL_ANSWER = 300000000000;
 const developmentChains = ["hardhat", "local"];
+const LOCK_TIME = 180;
+const CONFIRMATIONS = 5;
 
 const networkConfig = {
     11155111: {
@@ -8,4 +10,4 @@ const networkConfig = {
     }
 }
 
-module.exports = {DECIMAL, INITIAL_ANSWER, developmentChains, networkConfig}
+module.exports = {DECIMAL, INITIAL_ANSWER, developmentChains, LOCK_TIME, CONFIRMATIONS, networkConfig}

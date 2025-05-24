@@ -3,7 +3,7 @@
 // }
 
 const { network } = require("hardhat");
-const { developmentChains, networkConfig } = require("../helper-hardhat-config");
+const { developmentChains, networkConfig, CONFIRMATIONS } = require("../helper-hardhat-config");
 
 // module.exports.default = deployFunction;
 
@@ -14,23 +14,34 @@ const { developmentChains, networkConfig } = require("../helper-hardhat-config")
 // }
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
+    console.log("this is a deploy function")
     const firstAccount = (await getNamedAccounts()).firstAccount;
-    const { deploy } = deployments;
-    let dataFeedAddr;
+
+    let mockDataFeedAddr;
+    let confirmations;
     if (developmentChains.includes(network.name)) {
-        const mockV3Aggregator = await deployments.get("MockV3Aggregator")
-        dataFeedAddr = mockV3Aggregator.address;
+        const mockV3Aggregator = await deployments.get("MockV3Aggregator");
+        mockDataFeedAddr = mockV3Aggregator.address;
+        confirmations = 0;
     } else {
-        dataFeedAddr = networkConfig[network.config.chainId].ethUsdDataFeed;
+        mockDataFeedAddr = "";
+        confirmations = CONFIRMATIONS;
     }
-    // 部署合约
-    await deploy("FundMe", {
+
+    
+    const { deploy } = deployments;
+    const fundMe = await deploy("FundMe", {
         from: firstAccount,
-        args: [180, mockDataAddress.address],
-        log: true
-    })
-    console.log(`first account is ${firstAccount}`);
-    console.log("this is a deploy function");
+        args: [180, mockDataFeedAddr],
+        log: true,
+        waitConfirmations: confirmations,
+    });
+
+    if (hre.network.config.chainId === 11155111 && process.env.ETHERSCAN_API_KEY) {
+        // verify
+    } else {
+        console.log("network is not sepolia, verify is skipped");
+    }
 }
 
 module.exports.tags = ["all", "fundMe"];

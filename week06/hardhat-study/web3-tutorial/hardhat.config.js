@@ -2,6 +2,8 @@ require("@nomicfoundation/hardhat-toolbox");
 // require("dotenv").config();
 require("@chainlink/env-enc").config();
 require("hardhat-deploy")
+require("hardhat-deploy-ethers")
+require("@nomicfoundation/hardhat-ethers")
 // require("./tasks/deploy-fundme")
 // require("./tasks/interact-fundme")
 require("./tasks")
@@ -15,6 +17,9 @@ const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
 module.exports = {
   solidity: "0.8.28",
   defaultNetwork: "hardhat",
+  mocha: {
+    timeout: 200000
+  },
   networks: {
     sepolia: {
       url: SEPOLIA_URL,
@@ -41,5 +46,8 @@ module.exports = {
     secondAccount: {
       default: 1
     }
+  },
+  gasReporter: { 
+    enabled: true,
   }
 };
